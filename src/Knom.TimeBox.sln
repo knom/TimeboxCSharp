@@ -7,12 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Knom.TimeBox", "Knom.TimeBo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleApp", "SampleApp\SampleApp.csproj", "{A0032E29-6466-48F7-830B-011BEDE2CB86}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C9910072-54DF-4CA4-B1E0-0235340576B5}"
-	ProjectSection(SolutionItems) = preProject
-		CHANGELOG.md = CHANGELOG.md
-		README.md = README.md
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

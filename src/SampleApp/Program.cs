@@ -15,11 +15,11 @@ namespace SampleApp
 
             box.Connect();
             box.SetView(TimeBoxDevice.ViewType.Clock);
-            box.SetTimeColor(Color.Green);
+            box.SetTimeColor(Color.DarkOrchid);
             box.SetTime(DateTime.Now);
 
             box.SetTempUnit(fahrenheit: false);
-            box.SetTempUnitAndColor(Color.Orange, fahrenheit: true);
+            box.SetTempUnitAndColor(Color.Orange, fahrenheit: false);
 
             box.SetVolume(0);
             box.SetVolume(16);
