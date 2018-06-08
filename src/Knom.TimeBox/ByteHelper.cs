@@ -4,17 +4,16 @@ namespace Knom.TimeBox
 {
     internal static class ByteHelper
     {
-        public static byte[] CutZeros(this byte[] buffer)
+        public static byte[] Append(this byte[] buffer, byte[] buffer2)
         {
-            int i = buffer.Length - 1;
-            while (buffer[i] == 0)
-            {
-                --i;
-            }
+            int length = buffer.Length + buffer2.Length;
 
-            byte[] temp = new byte[i + 1];
-            Array.Copy(buffer, temp, i + 1);
-            return temp;
+            byte[] result = new byte[length];
+
+            Array.Copy(buffer, result, buffer.Length);
+            Array.Copy(buffer2, 0, result, buffer.Length, buffer2.Length);
+
+            return result;
         }
     }
 }
