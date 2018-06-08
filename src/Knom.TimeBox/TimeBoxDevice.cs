@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using InTheHand.Net;
 using InTheHand.Net.Sockets;
@@ -115,23 +116,79 @@ namespace Knom.TimeBox
             _client.GetStream().Write(message, 0, message.Length);
         }
 
+        #region Byte Helpers
 
+        public static byte[] ConvertImage(string path)
+        {
+            var imageBytes = new List<byte>();
+            imageBytes.Add(0);
+
+            int counter = 0;
+
+            bool first = true;
+            using (var image = (Bitmap)Image.FromFile(path))
+            {
+                for (int y = 0; y < image.Size.Width; y++)
+                {
+                    for (int x = 0; x < image.Size.Height; x++)
+                    {
+                        var color = image.GetPixel(y, x);
+                        //if (first):
+                        //  img[-1] = ((r & 0xf0) >> 4) + (g & 0xf0) if a > 32 else 0
+                        //  img.append((b & 0xf0) >> 4) if a > 32 else img.append(0)
+                        //  first = False
+                        //else:
+                        //  img[-1] += (r & 0xf0) if a > 32 else 0
+                        //  img.append(((g & 0xf0) >> 4) + (b & 0xf0)) if a > 32 else img.append(0)
+                        //  img.append(0)
+                        //  first = True
+                        if (first)
+                        {
+#warning ALPHA?
+                            int idx = imageBytes.Count - 1;
+                            imageBytes[idx] = (byte)(((color.R & 0xf0) >> 4) + (color.G & 0xf0));
+                            imageBytes.Add((byte)((color.B & 0xf0) >> 4));
+                            first = false;
+                        }
+                        else
+                        {
+                            int idx = imageBytes.Count - 1;
+                            imageBytes[idx] = (byte)(imageBytes[idx] + (byte)(color.R & 0xf0));
+                            imageBytes.Add((byte)(((color.G & 0xf0) >> 4) + (color.B & 0xf0)));
+                            imageBytes.Add(0);
+                            first = true;
+                        }
+                    }
+                }
+                return imageBytes.ToArray();
+            }
+        }
         private static byte[] BuildMessage(byte[] payload)
         {
+            // build the checksum
             var checksum = Checksum(payload);
 
             var buffer = new List<byte>();
+            // 0x01 first (begin of message)
             buffer.Add(0x01);
-            buffer.AddRange(Mask(payload));
-            buffer.AddRange(Mask(new[] { checksum.Item1, checksum.Item2 }));
+
+            // concat the message with the checksum
+            var completeMessage = payload.Append(new[] { checksum.Item1, checksum.Item2 });
+
+            // escape the message and add
+            buffer.AddRange(Escape(completeMessage));
+
+            // 0x02 last (end of message)
             buffer.Add(0x02);
 
             return buffer.ToArray();
         }
-
-        private static byte[] Mask(byte[] bytes)
+        private static byte[] Escape(byte[] bytes)
         {
-            var result = new List<byte>();
+            // Escape the payload. 
+            // It is not allowed to have occurrences of the codes 0x01, 0x02 and 0x03.
+            // They must be escaped by a leading 0x03 followed by 0x04, 0x05 or 0x06 instead
+            List<byte> result = new List<byte>();
 
             foreach (byte b in bytes)
             {
@@ -150,12 +207,57 @@ namespace Knom.TimeBox
 
         private static Tuple<byte, byte> Checksum(byte[] bytes)
         {
+            //  Compute the checksum.
             var p = bytes.Sum(pp => (int)pp);
 
             byte ck1 = (byte)(p & 0x00ff);
             byte ck2 = (byte)(p >> 8);
 
             return new Tuple<byte, byte>(ck1, ck2);
+        }
+
+        #endregion
+        public void ShowImage(string path)
+        {
+            var header = new byte[] { 0xbd, 0x00, 0x44, 0x00, 0x0a, 0x0a, 0x04 };
+
+            var imageData = ConvertImage(path);
+
+            var payload = header.Append(imageData);
+
+            var message = BuildMessage(payload);
+
+            _client.GetStream().Write(message, 0, message.Length);
+
+            //data = data
+            //ck1, ck2 = checksum(sum(head) + sum(data))
+
+            //msg = [0x01] + head + mask(data) + mask([ck1, ck2]) + [0x02]
+            //return msg
+        }
+
+
+        public void AnimateImages(string folderPath, int delay = 0)
+        {
+            var result = new Byte[0];
+
+            var header = new Byte[] { 0xbf, 0x00, 0x49, 0x00, 0x0a, 0x0a, 0x04 };
+
+            int fi = 0;
+            foreach (var file in Directory.GetFiles(folderPath, "*.png"))
+            {
+                byte[] imageData = ConvertImage(file);
+                byte[] payload = header
+                    .Append(new byte[] {(byte) fi, (byte) delay})
+                    .Append(imageData);
+
+                fi++;
+                byte[] message = BuildMessage(payload);
+
+                result = result.Append(message);
+            }
+
+            _client.GetStream().Write(result, 0, result.Length);
         }
     }
 }
