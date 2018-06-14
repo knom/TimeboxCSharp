@@ -45,6 +45,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ConnectTimeBox.cs" />
+    <Compile Include="SetTimeBoxTemperatureSettings.cs" />
+    <Compile Include="SetTimeBoxVolume.cs" />
     <Compile Include="ShowTimeBoxImage.cs" />
     <Compile Include="SetTimeBoxTime.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
