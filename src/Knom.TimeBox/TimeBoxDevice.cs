@@ -13,6 +13,8 @@ namespace Knom.TimeBox
     {
         private BluetoothClient _client;
 
+        public bool IsConnected => _client != null && _client.Connected;
+
         public enum ViewType
         {
             Clock = 0x00,
@@ -24,11 +26,7 @@ namespace Knom.TimeBox
             Stopwatch = 0x06,
             Scoreboard = 0x07
         }
-
-        public TimeBoxDevice()
-        {
-        }
-
+        
         public void Connect()
         {
             byte[] TIMEBOX_HELLO = new byte[] { 0, 5, 72, 69, 76, 76, 79, 0 };
@@ -37,7 +35,12 @@ namespace Knom.TimeBox
             var info = _client.DiscoverDevices();
 
             //BluetoothService.RFCommProtocol
-            var device = info.Single(p => p.DeviceName == "TimeBox-mini-audio");
+            var device = info.FirstOrDefault(p => p.DeviceName == "TimeBox-mini-audio"
+                                            && p.Connected);
+            if (device == null)
+            {
+                throw new TimeBoxDeviceNotFoundException("Device not found!");
+            }
             _client.Connect(new BluetoothEndPoint(device.DeviceAddress, Guid.Empty,
                 4));
             var stream = _client.GetStream();
@@ -237,18 +240,18 @@ namespace Knom.TimeBox
         }
 
 
-        public void AnimateImages(string folderPath, int delay = 0)
+        public void AnimateImages(IEnumerable<string> images, int delay = 0)
         {
             var result = new Byte[0];
 
             var header = new Byte[] { 0xbf, 0x00, 0x49, 0x00, 0x0a, 0x0a, 0x04 };
 
             int fi = 0;
-            foreach (var file in Directory.GetFiles(folderPath, "*.png"))
+            foreach (var file in images)
             {
                 byte[] imageData = ConvertImage(file);
                 byte[] payload = header
-                    .Append(new byte[] {(byte) fi, (byte) delay})
+                    .Append(new byte[] { (byte)fi, (byte)delay })
                     .Append(imageData);
 
                 fi++;
@@ -258,6 +261,10 @@ namespace Knom.TimeBox
             }
 
             _client.GetStream().Write(result, 0, result.Length);
+        }
+        public void AnimateImages(string folderPath, int delay = 0)
+        {
+            this.AnimateImages(Directory.GetFiles(folderPath, "*.png"), delay);
         }
     }
 }
