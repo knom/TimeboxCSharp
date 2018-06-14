@@ -82,7 +82,6 @@ namespace Knom.TimeBox
 
         public void SetTimeColor(Color color, bool h24 = true)
         {
-#warning Verify if it works?
             byte h24b = h24 ? (byte)0x01 : (byte)0x00;
             var payload = new byte[] { 0x09, 0x00, 0x45, 0x00, h24b, color.R, color.G, color.B, 0x00 };
 
@@ -90,29 +89,27 @@ namespace Knom.TimeBox
             _client.GetStream().Write(message, 0, message.Length);
         }
 
-        public void SetVolume([Range(0, 16)]int level)
+        public void SetVolume([Range(0, 15)]int level)
         {
-#warning Verify if MASK is right?
             var payload = new Byte[] { 0x04, 0x00, 0x08, (byte)level };
 
             var message = BuildMessage(payload);
             _client.GetStream().Write(message, 0, message.Length);
         }
 
-        public void SetTempUnit(bool fahrenheit = false)
-        {
-#warning Verify if it works?
-            byte f = fahrenheit ? (byte)0x01 : (byte)0x00;
-            var payload = new byte[] { 0x09, 0x00, 0x45, 0x01, f };
+        // Doesn't seem to work! Use SetTempUnitAndColor instead!
+        // public void SetTempUnit(TemperatureMode mode)
+        // {
+        //     byte f = mode==TemperatureMode.Fahrenheit ? (byte)0x01 : (byte)0x00;
+        //     var payload = new byte[] { 0x09, 0x00, 0x45, 0x01, f, 0x00 };
+           
+        //     var message = BuildMessage(payload);
+        //     _client.GetStream().Write(message, 0, message.Length);
+        // }
 
-            var message = BuildMessage(payload);
-            _client.GetStream().Write(message, 0, message.Length);
-        }
-
-        public void SetTempUnitAndColor(Color color, bool fahrenheit = false)
+        public void SetTempUnitAndColor(Color color, TemperatureMode mode = TemperatureMode.Celsius)
         {
-#warning Verify if it works?
-            byte f = fahrenheit ? (byte)0x01 : (byte)0x00;
+            byte f = (mode==TemperatureMode.Fahrenheit) ? (byte)0x01 : (byte)0x00;
             var payload = new byte[] { 0x09, 0x00, 0x45, 0x01, f, color.R, color.G, color.B, 0x00 };
 
             var message = BuildMessage(payload);
@@ -128,30 +125,27 @@ namespace Knom.TimeBox
 
             int counter = 0;
 
-            bool first = true;
+            bool uneven = true;
             using (var image = (Bitmap)Image.FromFile(path))
             {
                 for (int y = 0; y < image.Size.Width; y++)
                 {
                     for (int x = 0; x < image.Size.Height; x++)
                     {
+                        // get the color of the particular pixel of the image
                         var color = image.GetPixel(y, x);
-                        //if (first):
-                        //  img[-1] = ((r & 0xf0) >> 4) + (g & 0xf0) if a > 32 else 0
-                        //  img.append((b & 0xf0) >> 4) if a > 32 else img.append(0)
-                        //  first = False
-                        //else:
-                        //  img[-1] += (r & 0xf0) if a > 32 else 0
-                        //  img.append(((g & 0xf0) >> 4) + (b & 0xf0)) if a > 32 else img.append(0)
-                        //  img.append(0)
-                        //  first = True
-                        if (first)
+
+                        // Alpha channel < 32 --> drawn as black - "transparent"
+                        if (color.A < 32)
+                            color = Color.Black;
+
+                        // Encode even / uneven differently
+                        if (uneven)
                         {
-#warning ALPHA?
                             int idx = imageBytes.Count - 1;
                             imageBytes[idx] = (byte)(((color.R & 0xf0) >> 4) + (color.G & 0xf0));
                             imageBytes.Add((byte)((color.B & 0xf0) >> 4));
-                            first = false;
+                            uneven = false;
                         }
                         else
                         {
@@ -159,7 +153,7 @@ namespace Knom.TimeBox
                             imageBytes[idx] = (byte)(imageBytes[idx] + (byte)(color.R & 0xf0));
                             imageBytes.Add((byte)(((color.G & 0xf0) >> 4) + (color.B & 0xf0)));
                             imageBytes.Add(0);
-                            first = true;
+                            uneven = true;
                         }
                     }
                 }
